@@ -1,0 +1,150 @@
+{
+  "name": "tomcat_large_number_of_suspended_threads_incident",
+  "description": "In software engineering, a large number of suspended threads in Tomcat is an incident type that occurs when a high number of threads are created but are blocked from executing. This can happen due to a variety of reasons, such as slow database queries, network latency, or resource contention. When this occurs, the system may become unresponsive or slow, causing a degradation in performance or even a complete system failure. It is important to investigate and resolve this issue as quickly as possible to ensure the system can continue to function properly.",
+  "params": [
+    {
+      "name": "MAX_IDLE_TIME",
+      "value": ""
+    },
+    {
+      "name": "MAX_THREADS",
+      "value": ""
+    },
+    {
+      "name": "PORT_NUMBER",
+      "value": ""
+    },
+    {
+      "name": "PID",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Tomcat Large Number of Suspended Threads Incident.\nIn software engineering, a large number of suspended threads in Tomcat is an incident type that occurs when a high number of threads are created but are blocked from executing. This can happen due to a variety of reasons, such as slow database queries, network latency, or resource contention. When this occurs, the system may become unresponsive or slow, causing a degradation in performance or even a complete system failure. It is important to investigate and resolve this issue as quickly as possible to ensure the system can continue to function properly."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Next Step"
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sh`"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Identify the PID of the Tomcat process"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `PID=$(sudo lsof -t -i:${PORT_NUMBER})`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the number of threads blocked in the JVM"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sudo jstack -l $PID | grep \"java.lang.Thread.State\" | grep -c \"BLOCKED\"`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the number of threads waiting on a monitor lock"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sudo jstack -l $PID | grep \"java.lang.Thread.State\" | grep -c \"WAITING\"`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the number of threads in the \"TIMED_WAITING\" state"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sudo jstack -l $PID | grep \"java.lang.Thread.State\" | grep -c \"TIMED_WAITING\"`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the number of threads in the \"RUNNABLE\" state"
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sudo jstack -l $PID | grep \"java.lang.Thread.State\" | grep -c \"RUNNABLE\"`"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the current heap usage of the Tomcat JVM"
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sudo jmap -heap $PID | grep -A 1 \"used\" | tail -n 1 | awk '{print $1}'`"
+    },
+    {
+      "name": "cell_16",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the current CPU usage for the Tomcat process"
+    },
+    {
+      "name": "cell_17",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `sudo top -p $PID -b -n 1 | grep \"Cpu(s)\" | awk '{print $2 + $4}'`"
+    },
+    {
+      "name": "cell_18",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Tune the thread pool settings in Tomcat to prevent the creation of too many threads and limit the amount of time a thread is allowed to remain suspended."
+    },
+    {
+      "name": "cell_19",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_set_thread_pool_settings($MAX_IDLE_TIME, $MAX_THREADS)"
+    }
+  ]
+}
